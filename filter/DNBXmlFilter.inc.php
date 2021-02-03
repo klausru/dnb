@@ -184,6 +184,8 @@ class DNBXmlFilter extends NativeExportFilter {
 		// first author
 		$datafield100 = $this->createDatafieldNode($doc, $recordNode, '100', '1', ' ');
 		$this->createSubfieldNode($doc, $datafield100, 'a', $firstAuthor->getFullName(false,true));
+		if (!empty($firstAuthor->getData('orcid'))) $this->createSubfieldNode($doc, $datafield100, '0', '(orcid) '.str_replace('https://orcid.org/', '', $firstAuthor->getData('orcid')));
+		if (!empty($firstAuthor->getLocalizedAffiliation())) $this->createSubfieldNode($doc, $datafield100, 'u', $firstAuthor->getLocalizedAffiliation());
 		$this->createSubfieldNode($doc, $datafield100, '4', 'aut');
 		// title
 		$title = $submission->getTitle($galley->getLocale());
@@ -257,6 +259,8 @@ class DNBXmlFilter extends NativeExportFilter {
 		foreach ((array) $authors as $author) {
 			$datafield700 = $this->createDatafieldNode($doc, $recordNode, '700', '1', ' ');
 			$this->createSubfieldNode($doc, $datafield700, 'a', $author->getFullName(false,true));
+			if (!empty($author->getData('orcid'))) $this->createSubfieldNode($doc, $datafield700, '0', '(orcid) '.str_replace('https://orcid.org/', '', $author->getData('orcid')));
+			if (!empty($author->getLocalizedAffiliation())) $this->createSubfieldNode($doc, $datafield700, 'u', $author->getLocalizedAffiliation());
 			$this->createSubfieldNode($doc, $datafield700, '4', 'aut');
 		}
 		// translators
@@ -270,9 +274,17 @@ class DNBXmlFilter extends NativeExportFilter {
 		// at least the year has to be provided
 		$volume = $issue->getVolume();
 		$number = $issue->getNumber();
+		$issueTitle = $issue->getLocalizedTitle();
+		$issueDesc = $issue->getLocalizedDescription();
 		$issueDatafield773 = $this->createDatafieldNode($doc, $recordNode, '773', '1', ' ');
 		if (!empty($volume)) $this->createSubfieldNode($doc, $issueDatafield773, 'g', 'volume:'.$volume);
-		if (!empty($number)) $this->createSubfieldNode($doc, $issueDatafield773, 'g', 'number:'.$number);
+		if (!empty($number) && is_numeric($number))
+			{
+			$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'number:'.$number);
+			} else {
+				$this->createSubfieldNode($doc, $issueDatafield773, 't', $issueTitle);
+			}
+		if (!empty($issueDesc)) $this->createSubfieldNode($doc, $issueDatafield773, 'h', strip_tags($issueDesc));
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'day:'.$day);
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'month:'.$month);
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'year:'.$yearYYYY);
