@@ -184,6 +184,8 @@ class DNBXmlFilter extends NativeExportFilter {
 		// first author
 		$datafield100 = $this->createDatafieldNode($doc, $recordNode, '100', '1', ' ');
 		$this->createSubfieldNode($doc, $datafield100, 'a', $firstAuthor->getFullName(false,true));
+		if (!empty($firstAuthor->getData('orcid'))) $this->createSubfieldNode($doc, $datafield100, '0', '(orcid) '.str_replace('https://orcid.org/', '', $firstAuthor->getData('orcid')));
+		if (!empty($firstAuthor->getLocalizedAffiliation())) $this->createSubfieldNode($doc, $datafield100, 'u', $firstAuthor->getLocalizedAffiliation());
 		$this->createSubfieldNode($doc, $datafield100, '4', 'aut');
 		// title
 		$title = $submission->getTitle($galley->getLocale());
@@ -230,19 +232,19 @@ class DNBXmlFilter extends NativeExportFilter {
 			$this->createSubfieldNode($doc, $datafield520, 'u', $abstractURL);
 		}
 		// license URL
-		$licenseURL = $submission->getLicenseURL();
-		if (empty($licenseURL)) {
+		$licenseUrl = $submission->getLicenseUrl();
+		if (empty($licenseUrl)) {
 			// copyright notice
 			$copyrightNotice = $journal->getSetting('copyrightNotice', $galley->getLocale());
 			if (empty($copyrightNotice)) $copyrightNotice = $journal->getSetting('copyrightNotice', $journal->getPrimaryLocale());
 			if (!empty($copyrightNotice)) {
 				// link to the article view page where the copyright notice can be found
-			    $licenseURL = $request->url($journal->getPath(), 'article', 'view', array($article->getId()));
+			    $licenseUrl = $request->url($journal->getPath(), 'article', 'view', array($article->getId()));
 			}
 		}
-		if (!empty($licenseURL)) {
+		if (!empty($licenseUrl)) {
 			$datafield540 = $this->createDatafieldNode($doc, $recordNode, '540', ' ', ' ');
-			$this->createSubfieldNode($doc, $datafield540, 'u', $licenseURL);
+			$this->createSubfieldNode($doc, $datafield540, 'u', $licenseUrl);
 		}
 		// keywords
 		$submissionKeywordDao = DAORegistry::getDAO('SubmissionKeywordDAO'); /* @var $submissionKeywordDao SubmissionKeywordDAO */
@@ -263,6 +265,8 @@ class DNBXmlFilter extends NativeExportFilter {
 		foreach ((array) $translators as $translator) {
 		    $datafield700 = $this->createDatafieldNode($doc, $recordNode, '700', '1', ' ');
 		    $this->createSubfieldNode($doc, $datafield700, 'a', $translator->getFullName(false,true));
+			if (!empty($author->getData('orcid'))) $this->createSubfieldNode($doc, $datafield700, '0', '(orcid) '.str_replace('https://orcid.org/', '', $author->getData('orcid')));
+			if (!empty($author->getLocalizedAffiliation())) $this->createSubfieldNode($doc, $datafield700, 'u', $author->getLocalizedAffiliation());
 		    $this->createSubfieldNode($doc, $datafield700, '4', 'trl');
 		}
 		
@@ -270,13 +274,30 @@ class DNBXmlFilter extends NativeExportFilter {
 		// at least the year has to be provided
 		$volume = $issue->getVolume();
 		$number = $issue->getNumber();
+		$issueTitle = $issue->getLocalizedTitle();
+		$issueDesc = $issue->getLocalizedDescription();
+		$issueISBN = $issue->getStoredPubId('isbn');
+		$issueDOI = $issue->getStoredPubId('doi');
 		$issueDatafield773 = $this->createDatafieldNode($doc, $recordNode, '773', '1', ' ');
 		if (!empty($volume)) $this->createSubfieldNode($doc, $issueDatafield773, 'g', 'volume:'.$volume);
 		if (!empty($number)) $this->createSubfieldNode($doc, $issueDatafield773, 'g', 'number:'.$number);
+		if (!empty($number) && is_numeric($number))
+		{
+			$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'number:'.$number);
+			} else {
+			$this->createSubfieldNode($doc, $issueDatafield773, 'p', $number);
+		}
+		if (!empty($issueTitle)) $this->createSubfieldNode($doc, $issueDatafield773, 't', $issueTitle);
+		if (!empty($issueDesc)) $this->createSubfieldNode($doc, $issueDatafield773, 'h', strip_tags($issueDesc));
+		if (!empty($issueISBN)) $this->createSubfieldNode($doc, $issueDatafield773, 'z', $issueISBN);
+		if (!empty($issueDOI)) $this->createSubfieldNode($doc, $issueDatafield773, 'o', $issueDOI);
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'day:'.$day);
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'month:'.$month);
 		$this->createSubfieldNode($doc, $issueDatafield773, 'g', 'year:'.$yearYYYY);
+		if (!empty($submission->getPages())) $this->createSubfieldNode($doc, $issueDatafield773, 'g', 'pages:'.$submission->getPages());
+		$this->createSubfieldNode($doc, $issueDatafield773, 'a', $journal->getLocalizedName());
 		$this->createSubfieldNode($doc, $issueDatafield773, '7', 'nnas');
+		
 		// journal data
 		// there has to be an ISSN
 		$issn = $journal->getSetting('onlineIssn');
@@ -284,6 +305,8 @@ class DNBXmlFilter extends NativeExportFilter {
 		assert(!empty($issn));
 		$journalDatafield773 = $this->createDatafieldNode($doc, $recordNode, '773', '1', '8');
 		$this->createSubfieldNode($doc, $journalDatafield773, 'x', $issn);
+		$this->createSubfieldNode($doc, $journalDatafield773, 'w', '(DE-600) 2020558-2'); // This needs to be hard coded and individually replaced
+
 		// file data
 		$galleyURL = $request->url($journal->getPath(), 'article', 'view', array($submissionId, $galley->getId()));
 		$datafield856 = $this->createDatafieldNode($doc, $recordNode, '856', '4', ' ');
